@@ -1,19 +1,24 @@
 import _ from 'lodash';
 import { BigIntOrderedMap } from "~/logic/lib/BigIntOrderedMap";
 import bigInt, { BigInteger } from "big-integer";
+import useGraphState, { GraphState } from '../state/graph';
+import { reduceState } from '../state/base';
 
-export const GraphReducer = (json, state) => {
+export const GraphReducer = (json) => {
   const data = _.get(json, 'graph-update', false);
+  
   if (data) {
-    keys(data, state);
-    addGraph(data, state);
-    removeGraph(data, state);
-    addNodes(data, state);
-    removeNodes(data, state);
+    reduceState<GraphState, any>(useGraphState, data, [
+      keys,
+      addGraph,
+      removeGraph,
+      addNodes,
+      removeNodes
+    ]);
   }
 };
 
-const keys = (json, state) => {
+const keys = (json, state: GraphState): GraphState => {
   const data = _.get(json, 'keys', false);
   if (data) {
     state.graphKeys = new Set(data.map((res) => {
@@ -21,9 +26,10 @@ const keys = (json, state) => {
       return resource;
     }));
   }
+  return state;
 };
 
-const addGraph = (json, state) => {
+const addGraph = (json, state: GraphState): GraphState => {
 
   const _processNode = (node) => {
     //  is empty
@@ -55,6 +61,8 @@ const addGraph = (json, state) => {
 
     let resource = data.resource.ship + '/' + data.resource.name;
     state.graphs[resource] = new BigIntOrderedMap();
+    state.graphTimesentMap[resource] = {};
+
 
     for (let idx in data.graph) {
       let item = data.graph[idx];
@@ -69,10 +77,10 @@ const addGraph = (json, state) => {
     }
     state.graphKeys.add(resource);
   }
-
+  return state;
 };
 
-const removeGraph = (json, state) => {
+const removeGraph = (json, state: GraphState): GraphState => {
   const data = _.get(json, 'remove-graph', false);
   if (data) {
 
@@ -83,6 +91,7 @@ const removeGraph = (json, state) => {
     state.graphKeys.delete(resource);
     delete state.graphs[resource];
   }
+  return state;
 };
 
 const mapifyChildren = (children) => {
@@ -113,53 +122,121 @@ const addNodes = (json, state) => {
     return graph;
   };
 
+  const _remove = (graph, index) => {
+    if (index.length === 1) {
+      graph.delete(index[0]);
+    } else {
+      const child = graph.get(index[0]);
+      if (child) {
+        child.children = _remove(child.children, index.slice(1));
+        graph.set(index[0], child);
+      }
+    }
+
+    return graph;
+  };
+
+  const _killByFuzzyTimestamp = (graph, resource, timestamp) => {
+    if (state.graphTimesentMap[resource][timestamp]) {
+      let index = state.graphTimesentMap[resource][timestamp];
+
+      if (index.split('/').length === 0) { return; }
+      let indexArr = index.split('/').slice(1).map((ind) => {
+        return bigInt(ind);
+      });
+
+      graph = _remove(graph, indexArr);
+      delete state.graphTimesentMap[resource][timestamp];
+    }
+
+    return graph;
+  };
+
+  const _removePending = (graph, post, resource) => {
+    if (!post.hash) {
+      return graph;
+    }
+
+    graph = _killByFuzzyTimestamp(graph, resource, post['time-sent']);
+    graph = _killByFuzzyTimestamp(graph, resource, post['time-sent'] - 1);
+    graph = _killByFuzzyTimestamp(graph, resource, post['time-sent'] + 1);
+
+    return graph;
+  };
+
   const data = _.get(json, 'add-nodes', false);
   if (data) {
-    if (!('graphs' in state)) { return; }
+    if (!('graphs' in state)) { return state; }
 
     let resource = data.resource.ship + '/' + data.resource.name;
     if (!(resource in state.graphs)) { 
       state.graphs[resource] = new BigIntOrderedMap();
     }
+
+    if (!(resource in state.graphTimesentMap)) {
+      state.graphTimesentMap[resource] = {};
+    }
+
     state.graphKeys.add(resource);
+    
+    let indices = Array.from(Object.keys(data.nodes));
 
-    for (let index in data.nodes) {
+    indices.sort((a, b) => {
+      let aArr = a.split('/');
+      let bArr = b.split('/');
+      return bArr.length < aArr.length;
+    });
+
+    let graph = state.graphs[resource];
+
+    indices.forEach((index) => {
       let node = data.nodes[index];
+      graph = _removePending(graph, node.post, resource);
+      
       if (index.split('/').length === 0) { return; }
-
-      index = index.split('/').slice(1).map((ind) => {
+      let indexArr = index.split('/').slice(1).map((ind) => {
         return bigInt(ind);
       });
 
-      if (index.length === 0) { return; }
+      if (indexArr.length === 0) { return state; }
+
+      if (node.post.pending) {
+        state.graphTimesentMap[resource][node.post['time-sent']] = index;
+      }
 
       node.children = mapifyChildren(node?.children || {});
-
-      
-      state.graphs[resource] = _addNode(
-        state.graphs[resource],
-        index,
+     
+      graph = _addNode(
+        graph,
+        indexArr,
         node
       );
-    }
+      
+    });
+
+    state.graphs[resource] = graph;
   }
+  return state;
 };
 
-const removeNodes = (json, state) => {
+const removeNodes = (json, state: GraphState): GraphState => {
   const _remove = (graph, index) => {
     if (index.length === 1) {
         graph.delete(index[0]);
       } else {
         const child = graph.get(index[0]);
-        _remove(child.children, index.slice(1));
-        graph.set(index[0], child);
+        if (child) {
+          _remove(child.children, index.slice(1));
+          graph.set(index[0], child);
+        }
       }
   };
+
   const data = _.get(json, 'remove-nodes', false);
   if (data) {
     const { ship, name } = data.resource;
     const res = `${ship}/${name}`;
-    if (!(res in state.graphs)) { return; }
+    if (!(res in state.graphs)) { return state; }
 
     data.indices.forEach((index) => {
       if (index.split('/').length === 0) { return; }
@@ -169,4 +246,5 @@ const removeNodes = (json, state) => {
       _remove(state.graphs[res], indexArr);
     });
   }
+  return state;
 };

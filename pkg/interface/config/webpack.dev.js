@@ -94,7 +94,11 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env', '@babel/typescript', '@babel/preset-react'],
+            presets: ['@babel/preset-env', '@babel/typescript', ['@babel/preset-react', {
+              runtime: 'automatic',
+              development: true,
+              importSource: '@welldone-software/why-did-you-render',
+            }]],
             plugins: [
               '@babel/transform-runtime',
               '@babel/plugin-proposal-object-rest-spread',
@@ -127,11 +131,11 @@ module.exports = {
   plugins: [
     new UrbitShipPlugin(urbitrc),
     new webpack.DefinePlugin({
-      'process.env.TUTORIAL_HOST': JSON.stringify('~hastuc-dibtux'),
+      'process.env.TUTORIAL_HOST': JSON.stringify('~difmex-passed'),
       'process.env.TUTORIAL_GROUP': JSON.stringify('beginner-island'),
-      'process.env.TUTORIAL_CHAT': JSON.stringify('chat-1704'),
-      'process.env.TUTORIAL_BOOK': JSON.stringify('book-9695'),
-      'process.env.TUTORIAL_LINKS': JSON.stringify('link-2827'),
+      'process.env.TUTORIAL_CHAT': JSON.stringify('introduce-yourself-7010'),
+      'process.env.TUTORIAL_BOOK': JSON.stringify('guides-9684'),
+      'process.env.TUTORIAL_LINKS': JSON.stringify('community-articles-2143'),
     })
 
     // new CleanWebpackPlugin(),

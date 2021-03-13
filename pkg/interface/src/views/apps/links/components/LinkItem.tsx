@@ -10,6 +10,7 @@ import { roleForShip } from '~/logic/lib/group';
 import GlobalApi from '~/logic/api/global';
 import { Dropdown } from '~/views/components/Dropdown';
 import RemoteContent from '~/views/components/RemoteContent';
+import useHarkState from '~/logic/state/hark';
 
 interface LinkItemProps {
   node: GraphNode;
@@ -17,9 +18,6 @@ interface LinkItemProps {
   api: GlobalApi;
   group: Group;
   path: string;
-  contacts: Rolodex;
-  unreads: Unreads;
-  measure: (el: any) => void;
 }
 
 export const LinkItem = (props: LinkItemProps): ReactElement => {
@@ -29,8 +27,6 @@ export const LinkItem = (props: LinkItemProps): ReactElement => {
     api,
     group,
     path,
-    contacts,
-    measure,
     ...rest
   } = props;
 
@@ -91,19 +87,19 @@ export const LinkItem = (props: LinkItemProps): ReactElement => {
   };
 
   const appPath = `/ship/~${resource}`;
-  const commColor = (props.unreads.graph?.[appPath]?.[`/${index}`]?.unreads ?? 0) > 0 ? 'blue' : 'gray';
-  const isUnread = props.unreads.graph?.[appPath]?.['/']?.unreads?.has(node.post.index);
-
-  const onMeasure = useCallback(() => {
-    ref.current && measure(ref.current);
-  }, [ref.current, measure]);
-
-  useEffect(() => {
-    onMeasure();
-  }, [onMeasure]);
+  const unreads = useHarkState(state => state.unreads);
+  const commColor = (unreads.graph?.[appPath]?.[`/${index}`]?.unreads ?? 0) > 0 ? 'blue' : 'gray';
+  const isUnread = unreads.graph?.[appPath]?.['/']?.unreads?.has(node.post.index);
 
   return (
-    <Box mx="auto" px={3} maxWidth="768px" ref={ref} width="100%" {...rest}>
+    <Box
+      mx="auto"
+      px={3}
+      maxWidth="768px"
+      ref={ref}
+      width="100%"
+      opacity={node.post.pending ? '0.5' : '1'}
+      {...rest}>
       <Box
         lineHeight="tall"
         display='flex'
@@ -124,7 +120,6 @@ export const LinkItem = (props: LinkItemProps): ReactElement => {
           url={href}
           text={contents[0].text}
           unfold={true}
-          onLoad={onMeasure}
           style={{ alignSelf: 'center' }}
           oembedProps={{
             p: 2,
@@ -153,23 +148,20 @@ export const LinkItem = (props: LinkItemProps): ReactElement => {
           </Anchor>
         </Text>
       </Box>
-
       <Row minWidth='0' flexShrink={0} width="100%" justifyContent="space-between" py={3} bg="white">
-
       <Author
         showImage
-        contacts={contacts}
         ship={author}
         date={node.post['time-sent']}
         group={group}
-        api={api}
-      ></Author>
-
+      />
       <Box ml="auto">
-        <Link to={`${baseUrl}/${index}`}>
+        <Link
+          to={node.post.pending ? '#' : `${baseUrl}/${index}`}
+          style={{ cursor: node.post.pending ? 'default' : 'pointer' }}>
         <Box display='flex'>
           <Icon color={commColor} icon='Chat' />
-          <Text color={commColor} ml={1}>{node.children.size}</Text>
+          <Text color={commColor} ml={1}>{size}</Text>
         </Box>
       </Link>
         </Box>

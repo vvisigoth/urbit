@@ -24,6 +24,8 @@ import { Rolodex, Groups } from '@urbit/api';
 import { DropdownSearch } from './DropdownSearch';
 import { cite, deSig } from '~/logic/lib/util';
 import { HoverBox } from './HoverBox';
+import useContactState from '~/logic/state/contact';
+import useGroupState from '~/logic/state/group';
 
 interface InviteSearchProps<I extends string> {
   autoFocus?: boolean;
@@ -31,20 +33,20 @@ interface InviteSearchProps<I extends string> {
   label?: string;
   caption?: string;
   id: I;
-  contacts: Rolodex;
-  groups: Groups;
   hideSelection?: boolean;
   maxLength?: number;
 }
 
-const getNicknameForShips = (groups: Groups, contacts: Rolodex): readonly [string[], Map<string, string[]>] => {
+const getNicknameForShips = (groups: Groups, contacts: Rolodex, selected: string[]): readonly [string[], Map<string, string[]>] => {
   const peerSet = new Set<string>();
   const nicknames = new Map<string, string[]>();
   _.forEach(groups, (group, path) => {
     if (group.members.size > 0) {
       const groupEntries = group.members.values();
       for (const member of groupEntries) {
-        peerSet.add(member);
+        if(!selected.includes(member)) {
+          peerSet.add(member);
+        }
       }
     }
 
@@ -116,15 +118,18 @@ export function ShipSearch<I extends string, V extends Value<I>>(
 
   const inputIdx = useRef(initialValues[id].length);
 
-  const selected: string[] = values[id] ?? [];
+  const selected: string[] = useMemo(() => values[id] ?? [], [values, id]);
 
   const name = () => `${props.id}[${inputIdx.current}]`;
 
   const pills = selected.slice(0, inputIdx.current);
 
+  const contacts = useContactState(state => state.contacts);
+  const groups = useGroupState(state => state.groups);
+
   const [peers, nicknames] = useMemo(
-    () => getNicknameForShips(props.groups, props.contacts),
-    [props.contacts, props.groups]
+    () => getNicknameForShips(groups, contacts, selected),
+    [contacts, groups, selected]
   );
 
   const renderCandidate = useCallback(

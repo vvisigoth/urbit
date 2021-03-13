@@ -17,7 +17,6 @@ interface NewPostProps {
   graph: Graph;
   association: Association;
   baseUrl: string;
-  storage: StorageState;
 }
 
 export default function NewPost(props: NewPostProps & RouteComponentProps) {
@@ -33,10 +32,7 @@ export default function NewPost(props: NewPostProps & RouteComponentProps) {
     try {
       const [noteId, nodes] = newPost(title, body);
       await api.graph.addNodes(ship, book, nodes);
-      await waiter(p =>
-        p.graph.has(noteId) && !p.graph.get(noteId)?.post?.pending
-      );
-      history.push(`${props.baseUrl}/note/${noteId}`);
+      history.push(`${props.baseUrl}`);
     } catch (e) {
       console.error(e);
       actions.setStatus({ error: 'Posting note failed' });
@@ -54,7 +50,6 @@ export default function NewPost(props: NewPostProps & RouteComponentProps) {
       onSubmit={onSubmit}
       submitLabel="Publish"
       loadingText="Posting..."
-      storage={props.storage}
     />
   );
 }

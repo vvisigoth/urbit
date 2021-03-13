@@ -1,11 +1,14 @@
-import React, { PureComponent, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { BaseAnchor, BaseImage, Box, Button, Text } from '@tlon/indigo-react';
 import { hasProvider } from 'oembed-parser';
 import EmbedContainer from 'react-oembed-container';
-import { withLocalState } from '~/logic/state/local';
+import useSettingsState from '~/logic/state/settings';
 import { RemoteContentPolicy } from '~/types/local-update';
+import { VirtualContextProps, withVirtual } from "~/logic/lib/virtualContext";
+import { IS_IOS } from '~/logic/lib/platform';
+import withState from '~/logic/lib/withState';
 
-interface RemoteContentProps {
+type RemoteContentProps = VirtualContextProps & {
   url: string;
   text?: string;
   unfold?: boolean;
@@ -17,7 +20,6 @@ interface RemoteContentProps {
   oembedProps?: any;
   textProps?: any;
   style?: any;
-  onLoad?(): void;
 }
 
 interface RemoteContentState {
@@ -30,9 +32,11 @@ const IMAGE_REGEX = new RegExp(/(jpg|img|png|gif|tiff|jpeg|webp|webm|svg)$/i);
 const AUDIO_REGEX = new RegExp(/(mp3|wav|ogg)$/i);
 const VIDEO_REGEX = new RegExp(/(mov|mp4|ogv)$/i);
 
-class RemoteContent extends PureComponent<RemoteContentProps, RemoteContentState> {
+
+class RemoteContent extends Component<RemoteContentProps, RemoteContentState> {
   private fetchController: AbortController | undefined;
   containerRef: HTMLDivElement | null = null;
+  private saving = false;
   constructor(props) {
     super(props);
     this.state = {
@@ -46,7 +50,23 @@ class RemoteContent extends PureComponent<RemoteContentProps, RemoteContentState
     this.onError = this.onError.bind(this);
   }
 
+  save = () => {
+    if(this.saving) {
+      return;
+    }
+    this.saving = true;
+    this.props.save();
+  };
+
+  restore = () => {
+    this.saving = false;
+    this.props.restore();
+  }
+
   componentWillUnmount() {
+    if(this.saving) {
+      this.restore();
+    }
     if (this.fetchController) {
       this.fetchController.abort();
     }
@@ -56,8 +76,35 @@ class RemoteContent extends PureComponent<RemoteContentProps, RemoteContentState
     event.stopPropagation();
     let unfoldState = this.state.unfold;
     unfoldState = !unfoldState;
+    this.save();
     this.setState({ unfold: unfoldState });
-    setTimeout(this.props.onLoad, 500);
+    requestAnimationFrame(() => {
+      this.restore();
+    });
+  }
+
+
+  componentDidUpdate(prevProps, prevState) {
+    if(prevState.embed !== this.state.embed) {
+      //console.log('remotecontent: restoring');
+      //prevProps.shiftLayout.restore();
+    }
+    const { url } = this.props;
+    if(url !== prevProps.url && (IMAGE_REGEX.test(url) || AUDIO_REGEX.test(url) || VIDEO_REGEX.test(url))) {
+      this.save();
+    };
+
+  }
+
+  componentDidMount() {
+  }
+
+  onLoad = () => {
+    window.requestAnimationFrame(() => {
+      const { restore } = this;
+      restore();
+    });
+
   }
 
   loadOembed() {
@@ -91,6 +138,7 @@ return;
   }
 
   onError(e: Event) {
+    this.restore();
     this.setState({ noCors: true });
   }
 
@@ -107,9 +155,9 @@ return;
       oembedProps = {},
       textProps = {},
       style = {},
-      onLoad = () => {},
       ...props
     } = this.props;
+    const { onLoad } = this;
     const { noCors } = this.state;
     const isImage = IMAGE_REGEX.test(url);
     const isAudio = AUDIO_REGEX.test(url);
@@ -140,6 +188,7 @@ return;
             className="db"
             src={url}
             style={style}
+            onLoad={onLoad}
             {...audioProps}
             {...props}
           />
@@ -193,13 +242,14 @@ return;
             className='embed-container'
             style={style}
             flexShrink={0}
-            onLoad={onLoad}
+            onLoad={this.onLoad}
             {...oembedProps}
             {...props}
           >
             {this.state.embed && this.state.embed.html && this.state.unfold
             ? <EmbedContainer markup={this.state.embed.html}>
               <div className="embed-container" ref={(el) => {
+                this.onLoad();
  this.containerRef = el;
 }}
                 dangerouslySetInnerHTML={{ __html: this.state.embed.html }}
@@ -217,4 +267,4 @@ return;
   }
 }
 
-export default withLocalState(RemoteContent, ['remoteContentPolicy']);
+export default withState(withVirtual(RemoteContent), [[useSettingsState, ['remoteContentPolicy']]]);

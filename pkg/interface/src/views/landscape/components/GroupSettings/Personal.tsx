@@ -4,22 +4,24 @@ import {
   Col,
   Label,
   BaseLabel,
-  BaseAnchor
+  Text
 } from '@tlon/indigo-react';
 import { GroupNotificationsConfig } from '@urbit/api';
 import { Association } from '@urbit/api/metadata';
 
 import GlobalApi from '~/logic/api/global';
 import { StatelessAsyncToggle } from '~/views/components/StatelessAsyncToggle';
+import useHarkState from '~/logic/state/hark';
 
 export function GroupPersonalSettings(props: {
   api: GlobalApi;
   association: Association;
-  notificationsGroupConfig: GroupNotificationsConfig;
 }) {
   const groupPath = props.association.group;
 
-  const watching = props.notificationsGroupConfig.findIndex(g => g === groupPath) !== -1;
+  const notificationsGroupConfig = useHarkState(state => state.notificationsGroupConfig);
+
+  const watching = notificationsGroupConfig.findIndex(g => g === groupPath) !== -1;
 
   const onClick = async () => {
     const func = !watching ? 'listenGroup' : 'ignoreGroup';
@@ -28,7 +30,7 @@ export function GroupPersonalSettings(props: {
 
   return (
     <Col px="4" pb="4" gapY="4">
-      <BaseAnchor pt="4" fontWeight="600" id="notifications" fontSize="2">Group Notifications</BaseAnchor>
+      <Text pt="4" fontWeight="600" id="notifications" fontSize="2">Group Notifications</Text>
       <BaseLabel
         htmlFor="asyncToggle"
         display="flex"

@@ -53,8 +53,6 @@ function PermissionsSummary(props: {
 interface GraphPermissionsProps {
   association: Association;
   group: Group;
-  groups: Groups;
-  contacts: Rolodex;
   api: GlobalApi;
 }
 
@@ -161,7 +159,7 @@ export function GraphPermissions(props: GraphPermissionsProps) {
     >
       <Form style={{ display: 'contents' }}>
         <Col mt="4" flexShrink={0} gapY="5">
-          <Col gapY="1">
+          <Col gapY="1" mt="0">
             <Text id="permissions" fontWeight="bold" fontSize="2">
               Permissions
             </Text>
@@ -177,7 +175,7 @@ export function GraphPermissions(props: GraphPermissionsProps) {
               vip={association.metadata.vip}
             />
           </Col>
-          <ChannelWritePerms contacts={props.contacts} groups={props.groups} />
+          <ChannelWritePerms />
           {association.metadata.module !== 'chat' && (
             <Checkbox
               id="readerComments"

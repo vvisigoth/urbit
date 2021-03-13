@@ -5,24 +5,23 @@
 // 1. call configure with a GlobalApi and GlobalStore.
 // 2. call start() to start the token refresh loop.
 //
-// If the ship has S3 credentials set, we don't try to get a token, but we keep
-// checking at regular intervals to see if they get unset. Otherwise, we try to
-// invoke the GCP token thread on the ship until it gives us an access token.
-// Once we have a token, we refresh it every hour or so, since it has an
+// If the ship does not have GCP storage configured, we don't try to get
+// a token, but we keep checking at regular intervals to see if it gets
+// configured. If GCP storage is configured, we try to invoke the GCP
+// get-token thread on the ship until it gives us an access token.  Once
+// we have a token, we refresh it every hour or so according to its
 // intrinsic expiry.
 //
 //
 import GlobalApi from '../api/global';
-import GlobalStore from '../store/store';
+import useStorageState from '../state/storage';
 
 
 class GcpManager {
   #api: GlobalApi | null = null;
-  #store: GlobalStore | null = null;
 
-  configure(api: GlobalApi, store: GlobalStore) {
+  configure(api: GlobalApi) {
     this.#api = api;
-    this.#store = store;
   }
 
   #running = false;
@@ -33,8 +32,8 @@ class GcpManager {
       console.warn('GcpManager already running');
       return;
     }
-    if (!this.#api || !this.#store) {
-      console.error('GcpManager must have api and store set');
+    if (!this.#api) {
+      console.error('GcpManager must have api set');
       return;
     }
     this.#running = true;
@@ -64,7 +63,7 @@ class GcpManager {
   #consecutiveFailures: number = 0;
 
   private isConfigured() {
-    return this.#store.state.storage.gcp.configured;
+    return useStorageState.getState().gcp.configured;
   }
 
   private refreshLoop() {
@@ -88,7 +87,7 @@ class GcpManager {
     }
     this.#api.gcp.getToken()
       .then(() => {
-        const token = this.#store.state.storage.gcp?.token;
+        const token = useStorageState.getState().gcp.token;
         if (token) {
           this.#consecutiveFailures = 0;
           const interval = this.refreshInterval(token.expiresIn);

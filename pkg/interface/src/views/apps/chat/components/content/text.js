@@ -40,6 +40,18 @@ const renderers = {
       </Text>
     );
   },
+  blockquote: ({ children }) => {
+    return (
+      <Text
+        lineHeight="20px"
+        display="block"
+        borderLeft="1px solid"
+        color="black"
+        paddingLeft={2}>
+        {children}
+      </Text>
+    )
+  },
   paragraph: ({ children }) => {
     return (
       <Text fontSize='1' lineHeight={'20px'}>
@@ -79,7 +91,7 @@ const MessageMarkdown = React.memo((props) => {
   }, []);
 
   return lines.map((line, i) => (
-    <>
+    <React.Fragment key={i}>
       {i !== 0 && <Row height={2} />}
       <ReactMarkdown
         {...rest}
@@ -111,7 +123,7 @@ const MessageMarkdown = React.memo((props) => {
           ]
         ]}
       />
-    </>
+    </React.Fragment>
   ));
 });
 
@@ -131,11 +143,8 @@ export default function TextContent(props) {
     const resource = `/ship/${content.text}`;
     return (
       <GroupLink
-        measure={props.measure}
         resource={resource}
         api={props.api}
-        associations={props.associations}
-        groups={props.groups}
         pl='2'
         border='1'
         borderRadius='2'

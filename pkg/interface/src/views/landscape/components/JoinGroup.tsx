@@ -22,6 +22,9 @@ import { StatelessAsyncButton } from '~/views/components/StatelessAsyncButton';
 import { getModuleIcon } from '~/logic/lib/util';
 import { FormError } from '~/views/components/FormError';
 import { GroupSummary } from './GroupSummary';
+import useGroupState from '~/logic/state/group';
+import useMetadataState from '~/logic/state/metadata';
+import {TUTORIAL_GROUP_RESOURCE} from '~/logic/lib/tutorialModal';
 
 const formSchema = Yup.object({
   group: Yup.string()
@@ -40,8 +43,6 @@ interface FormSchema {
 }
 
 interface JoinGroupProps {
-  groups: Groups;
-  associations: Associations;
   api: GlobalApi;
   autojoin?: string;
 }
@@ -59,7 +60,9 @@ function Autojoin(props: { autojoin: string | null }) {
 }
 
 export function JoinGroup(props: JoinGroupProps): ReactElement {
-  const { api, autojoin, associations, groups } = props;
+  const { api, autojoin } = props;
+  const associations = useMetadataState(state => state.associations);
+  const groups = useGroupState(state => state.groups);
   const history = useHistory();
   const initialValues: FormSchema = {
     group: autojoin || ''
@@ -68,19 +71,22 @@ export function JoinGroup(props: JoinGroupProps): ReactElement {
     MetadataUpdatePreview | string | null
   >(null);
 
-  const waiter = useWaitForProps(props, _.isString(preview) ? 1 : 5000);
+  const waiter = useWaitForProps({ associations, groups }, _.isString(preview) ? 1 : 5000);
 
   const onConfirm = useCallback(async (group: string) => {
     const [,,ship,name] = group.split('/');
+    if(group === TUTORIAL_GROUP_RESOURCE) {
+      await api.settings.putEntry('tutorial', 'joined', Date.now());
+    }
     await api.groups.join(ship, name);
     try {
-      await waiter((p: JoinGroupProps) => {
+      await waiter((p) => {
         return group in p.groups &&
           (group in (p.associations?.graph ?? {})
             || group in (p.associations?.groups ?? {}));
       });
 
-      if(props.groups?.[group]?.hidden) {
+      if(groups?.[group]?.hidden) {
         const { metadata } = associations.graph[group];
         history.push(`/~landscape/home/resource/${metadata.module}${group}`);
         return;

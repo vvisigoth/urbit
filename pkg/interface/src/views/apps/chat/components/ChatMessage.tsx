@@ -4,10 +4,12 @@ import React, {
   useEffect,
   useRef,
   Component,
-  PureComponent
+  PureComponent,
+  useCallback
 } from 'react';
 import moment from 'moment';
 import _ from 'lodash';
+import VisibilitySensor from 'react-visibility-sensor';
 import { Box, Row, Text, Rule, BaseImage } from '@tlon/indigo-react';
 import { Sigil } from '~/logic/lib/sigil';
 import OverlaySigil from '~/views/components/OverlaySigil';
@@ -16,6 +18,7 @@ import {
   cite,
   writeText,
   useShowNickname,
+  useHideAvatar,
   useHovering
 } from '~/logic/lib/util';
 import {
@@ -32,7 +35,10 @@ import RemoteContent from '~/views/components/RemoteContent';
 import { Mention } from '~/views/components/MentionText';
 import styled from 'styled-components';
 import useLocalState from '~/logic/state/local';
+import useSettingsState, { selectCalmState } from '~/logic/state/settings';
 import Timestamp from '~/views/components/Timestamp';
+import useContactState from '~/logic/state/contact';
+import { useIdlingState } from '~/logic/lib/idling';
 
 export const DATESTAMP_FORMAT = '[~]YYYY.M.D';
 
@@ -58,34 +64,50 @@ export const DayBreak = ({ when, shimTop = false }: DayBreakProps) => (
   </Row>
 );
 
-export const UnreadMarker = React.forwardRef(({ dayBreak, when }, ref) => (
-  <Row
-    position='absolute'
-    ref={ref}
-    px={2}
-    mt={2}
-    height={5}
-    justifyContent='center'
-    alignItems='center'
-    width='100%'
-  >
-    <Rule borderColor='lightBlue' />
-    <Text color='blue' fontSize={0} flexShrink='0' px={2}>
-      New messages below
-    </Text>
-    <Rule borderColor='lightBlue' />
-  </Row>
-));
+export const UnreadMarker = React.forwardRef(
+  ({ dayBreak, when, api, association }, ref) => {
+    const [visible, setVisible] = useState(false);
+    const idling = useIdlingState();
+    const dismiss = useCallback(() => {
+      api.hark.markCountAsRead(association, '/', 'message');
+    }, [api, association]);
+
+    useEffect(() => {
+      if (visible && !idling) {
+        dismiss();
+      }
+    }, [visible, idling]);
+
+    return (
+      <Row
+        position='absolute'
+        ref={ref}
+        px={2}
+        mt={2}
+        height={5}
+        justifyContent='center'
+        alignItems='center'
+        width='100%'
+      >
+        <Rule borderColor='lightBlue' />
+        <VisibilitySensor onChange={setVisible}>
+          <Text color='blue' fontSize={0} flexShrink='0' px={2}>
+            New messages below
+          </Text>
+        </VisibilitySensor>
+        <Rule borderColor='lightBlue' />
+      </Row>
+    );
+  }
+);
 
 interface ChatMessageProps {
-  measure(element): void;
   msg: Post;
   previousMsg?: Post;
   nextMsg?: Post;
   isLastRead: boolean;
   group: Group;
   association: Association;
-  contacts: Contacts;
   className?: string;
   isPending: boolean;
   style?: unknown;
@@ -96,9 +118,10 @@ interface ChatMessageProps {
   api: GlobalApi;
   highlighted?: boolean;
   renderSigil?: boolean;
+  innerRef: (el: HTMLDivElement | null) => void;
 }
 
-export default class ChatMessage extends Component<ChatMessageProps> {
+class ChatMessage extends Component<ChatMessageProps> {
   private divRef: React.RefObject<HTMLDivElement>;
 
   constructor(props) {
@@ -106,11 +129,7 @@ export default class ChatMessage extends Component<ChatMessageProps> {
     this.divRef = React.createRef();
   }
 
-  componentDidMount() {
-    if (this.divRef.current) {
-      this.props.measure(this.divRef.current);
-    }
-  }
+  componentDidMount() {}
 
   render() {
     const {
@@ -120,20 +139,16 @@ export default class ChatMessage extends Component<ChatMessageProps> {
       isLastRead,
       group,
       association,
-      contacts,
       className = '',
       isPending,
       style,
-      measure,
       scrollWindow,
       isLastMessage,
       unreadMarkerRef,
       history,
       api,
       highlighted,
-      fontSize,
-      groups,
-      associations
+      fontSize
     } = this.props;
 
     let { renderSigil } = this.props;
@@ -157,17 +172,11 @@ export default class ChatMessage extends Component<ChatMessageProps> {
       .unix(msg['time-sent'] / 1000)
       .format(renderSigil ? 'h:mm A' : 'h:mm');
 
-    const reboundMeasure = (event) => {
-      return measure(this.divRef.current);
-    };
-
     const messageProps = {
       msg,
       timestamp,
-      contacts,
       association,
       group,
-      measure: reboundMeasure.bind(this),
       style,
       containerClass,
       isPending,
@@ -175,9 +184,7 @@ export default class ChatMessage extends Component<ChatMessageProps> {
       api,
       scrollWindow,
       highlighted,
-      fontSize,
-      associations,
-      groups
+      fontSize
     };
 
     const unreadContainerStyle = {
@@ -186,10 +193,11 @@ export default class ChatMessage extends Component<ChatMessageProps> {
 
     return (
       <Box
-        ref={this.divRef}
+        ref={this.props.innerRef}
         pt={renderSigil ? 2 : 0}
         pb={isLastMessage ? 4 : 2}
         className={containerClass}
+        backgroundColor={highlighted ? 'blue' : 'white'}
         style={style}
       >
         {dayBreak && !isLastRead ? (
@@ -197,15 +205,17 @@ export default class ChatMessage extends Component<ChatMessageProps> {
         ) : null}
         {renderSigil ? (
           <>
-            <MessageAuthor pb={'2px'} {...messageProps} />
-            <Message pl={5} pr={4} {...messageProps} />
+            <MessageAuthor pb={1} {...messageProps} />
+            <Message pl={'44px'} pr={4} {...messageProps} />
           </>
         ) : (
-          <Message pl={5} pr={4} timestampHover {...messageProps} />
+          <Message pl={'44px'} pr={4} timestampHover {...messageProps} />
         )}
         <Box style={unreadContainerStyle}>
           {isLastRead ? (
             <UnreadMarker
+              association={association}
+              api={api}
               dayBreak={dayBreak}
               when={msg['time-sent']}
               ref={unreadMarkerRef}
@@ -217,20 +227,24 @@ export default class ChatMessage extends Component<ChatMessageProps> {
   }
 }
 
+export default React.forwardRef((props, ref) => (
+  <ChatMessage {...props} innerRef={ref} />
+));
+
 export const MessageAuthor = ({
   timestamp,
-  contacts,
   msg,
-  measure,
   group,
   api,
-  associations,
-  groups,
   history,
   scrollWindow,
   ...rest
 }) => {
-  const dark = useLocalState((state) => state.dark);
+  const osDark = useLocalState((state) => state.dark);
+
+  const theme = useSettingsState((s) => s.display.theme);
+  const dark = theme === 'dark' || (theme === 'auto' && osDark);
+  const contacts = useContactState((state) => state.contacts);
 
   const datestamp = moment
     .unix(msg['time-sent'] / 1000)
@@ -238,7 +252,7 @@ export const MessageAuthor = ({
   const contact =
     `~${msg.author}` in contacts ? contacts[`~${msg.author}`] : false;
   const showNickname = useShowNickname(contact);
-  const { hideAvatars } = useLocalState(({ hideAvatars }) => ({ hideAvatars }));
+  const { hideAvatars } = useSettingsState(selectCalmState);
   const shipName = showNickname ? contact.nickname : cite(msg.author);
   const copyNotice = 'Copied';
   const color = contact
@@ -278,19 +292,32 @@ export const MessageAuthor = ({
     contact?.avatar && !hideAvatars ? (
       <BaseImage
         display='inline-block'
+        style={{ objectFit: 'cover' }}
         src={contact.avatar}
-        height={16}
-        width={16}
+        height={24}
+        width={24}
+        borderRadius={1}
       />
     ) : (
-      <Sigil
-        ship={msg.author}
-        size={16}
-        color={color}
-        classes={sigilClass}
-        icon
-        padding={2}
-      />
+      <Box
+        width={24}
+        height={24}
+        display='flex'
+        justifyContent='center'
+        alignItems='center'
+        backgroundColor={color}
+        borderRadius={1}
+      >
+        <Sigil
+          ship={msg.author}
+          size={12}
+          display='block'
+          color={color}
+          classes={sigilClass}
+          icon
+          padding={0}
+        />
+      </Box>
     );
   return (
     <Box display='flex' alignItems='center' {...rest}>
@@ -298,9 +325,9 @@ export const MessageAuthor = ({
         onClick={() => {
           setShowOverlay(true);
         }}
-        height={16}
+        height={24}
         pr={2}
-        pl={2}
+        pl={'12px'}
         cursor='pointer'
         position='relative'
       >
@@ -327,10 +354,10 @@ export const MessageAuthor = ({
           pt={1}
           pb={1}
           display='flex'
-          alignItems='center'
+          alignItems='baseline'
         >
           <Text
-            fontSize={0}
+            fontSize={1}
             mr={2}
             flexShrink={0}
             mono={nameMono}
@@ -364,24 +391,23 @@ export const MessageAuthor = ({
 
 export const Message = ({
   timestamp,
-  contacts,
   msg,
-  measure,
   group,
   api,
-  associations,
-  groups,
   scrollWindow,
   timestampHover,
   ...rest
 }) => {
   const { hovering, bind } = useHovering();
+  const contacts = useContactState((state) => state.contacts);
   return (
     <Box position='relative' {...rest}>
       {timestampHover ? (
         <Text
           display={hovering ? 'block' : 'none'}
           position='absolute'
+          width='40px'
+          textAlign='center'
           left='0'
           top='3px'
           fontSize={0}
@@ -398,9 +424,7 @@ export const Message = ({
             case 'text':
               return (
                 <TextContent
-                  associations={associations}
-                  groups={groups}
-                  measure={measure}
+                  key={i}
                   api={api}
                   fontSize={1}
                   lineHeight={'20px'}
@@ -408,18 +432,19 @@ export const Message = ({
                 />
               );
             case 'code':
-              return <CodeContent content={content} />;
+              return <CodeContent key={i} content={content} />;
             case 'url':
               return (
                 <Box
+                  key={i}
                   flexShrink={0}
                   fontSize={1}
                   lineHeight='20px'
                   color='black'
                 >
                   <RemoteContent
+                    key={content.url}
                     url={content.url}
-                    onLoad={measure}
                     imageProps={{
                       style: {
                         maxWidth: 'min(100%,18rem)',
@@ -445,9 +470,10 @@ export const Message = ({
                 </Box>
               );
             case 'mention':
-              const first = (i) => (i === 0);
+              const first = (i) => i === 0;
               return (
                 <Mention
+                  key={i}
                   first={first(i)}
                   group={group}
                   scrollWindow={scrollWindow}

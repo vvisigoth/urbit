@@ -9,57 +9,78 @@ import { Associations, Contacts, Groups, Invites } from '@urbit/api';
 import makeIndex from '~/logic/lib/omnibox';
 import OmniboxInput from './OmniboxInput';
 import OmniboxResult from './OmniboxResult';
-import { withLocalState } from '~/logic/state/local';
 import { deSig } from '~/logic/lib/util';
+import { withLocalState } from '~/logic/state/local';
 
 import defaultApps from '~/logic/lib/default-apps';
-import { useOutsideClick } from '~/logic/lib/useOutsideClick';
-import { Portal } from '../Portal';
+import {useOutsideClick} from '~/logic/lib/useOutsideClick';
+import {Portal} from '../Portal';
+import useSettingsState, {SettingsState} from '~/logic/state/settings';
 import { Tile } from '~/types';
+import useContactState from '~/logic/state/contact';
+import useGroupState from '~/logic/state/group';
+import useHarkState from '~/logic/state/hark';
+import useInviteState from '~/logic/state/invite';
+import useLaunchState from '~/logic/state/launch';
+import useMetadataState from '~/logic/state/metadata';
 
 interface OmniboxProps {
-  associations: Associations;
-  contacts: Contacts;
-  groups: Groups;
-  tiles: {
-    [app: string]: Tile;
-  };
   show: boolean;
   toggle: () => void;
   notifications: number;
-  invites: Invites;
 }
 
 const SEARCHED_CATEGORIES = ['ships', 'other', 'commands', 'groups', 'subscriptions', 'apps'];
+const settingsSel = (s: SettingsState) => s.leap;
 
 export function Omnibox(props: OmniboxProps) {
   const location = useLocation();
   const history = useHistory();
-  const omniboxRef = useRef<HTMLDivElement | null>(null);
+  const leapConfig = useSettingsState(settingsSel);
+  const omniboxRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<[] | [string, string]>([]);
+  const contactState = useContactState(state => state.contacts);
+  const notifications = useHarkState(state => state.notifications);
+  const invites = useInviteState(state => state.invites);
+  const tiles = useLaunchState(state => state.tiles);
 
   const contacts = useMemo(() => {
     const maybeShip = `~${deSig(query)}`;
     return ob.isValidPatp(maybeShip)
-      ? { ...props.contacts, [maybeShip]: {} }
-      : props.contacts;
-  }, [props.contacts, query]);
+      ? { ...contactState, [maybeShip]: {} }
+      : contactState;
+  }, [contactState, query]);
+
+  const groups = useGroupState(state => state.groups);
+  const associations = useMetadataState(state => state.associations);
+
+  const selectedGroup =  useMemo(
+    () => location.pathname.startsWith('/~landscape/ship/')
+      ? '/' + location.pathname.split('/').slice(2,5).join('/')
+      : null,
+    [location.pathname]
+  );
 
   const index = useMemo(() => {
-    const selectedGroup = location.pathname.startsWith('/~landscape/ship/')
-      ? '/' + location.pathname.split('/').slice(2,5).join('/')
-      : null;
     return makeIndex(
       contacts,
-      props.associations,
-      props.tiles,
+      associations,
+      tiles,
       selectedGroup,
-      props.groups
+      groups,
+      leapConfig,
     );
-  }, [location.pathname, contacts, props.associations, props.groups, props.tiles]);
+  }, [
+    selectedGroup,
+    leapConfig,
+    contacts,
+    associations,
+    groups,
+    tiles
+  ]);
 
   const onOutsideClick = useCallback(() => {
     props.show && props.toggle();
@@ -85,7 +106,7 @@ export function Omnibox(props: OmniboxProps) {
   const initialResults = useMemo(() => {
     return new Map(SEARCHED_CATEGORIES.map((category) => {
      if (category === 'other') {
-        return ['other', index.get('other')];
+       return ['other', index.get('other').filter(({ app }) => app !== 'tutorial')];
      }
      return [category, []];
     }));
@@ -118,6 +139,7 @@ export function Omnibox(props: OmniboxProps) {
     if (defaultApps.includes(app.toLowerCase())
         || app === 'profile'
         || app === 'messages'
+        || app === 'tutorial'
         || app === 'Links'
         || app === 'Terminal'
         || app === 'home'
@@ -255,9 +277,6 @@ export function Omnibox(props: OmniboxProps) {
                 link={result.link}
                 navigate={() => navigate(result.app, result.link)}
                 selected={sel}
-                invites={props.invites}
-                notifications={props.notifications}
-                contacts={props.contacts}
               />
             ))}
           </Box>
@@ -265,7 +284,7 @@ export function Omnibox(props: OmniboxProps) {
       })
       }
     </Box>;
-  }, [results, navigate, selected, props.contacts, props.notifications, props.invites]);
+  }, [results, navigate, selected, contactState, notifications, invites]);
 
   return (
     <Portal>

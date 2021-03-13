@@ -6,7 +6,8 @@ import {
   Box,
   ManagedTextInputField as Input,
   ManagedToggleSwitchField as Checkbox,
-  Col
+  Col,
+  Text
 } from '@tlon/indigo-react';
 import { Enc } from '@urbit/api';
 import { Group, GroupPolicy } from '@urbit/api/groups';
@@ -43,11 +44,10 @@ interface GroupAdminSettingsProps {
   group: Group;
   association: Association;
   api: GlobalApi;
-  storage: StorageState;
 }
 
 export function GroupAdminSettings(props: GroupAdminSettingsProps) {
-  const { group, association, storage } = props;
+  const { group, association } = props;
   const { metadata } = association;
   const history = useHistory();
   const currentPrivate = 'invite' in props.group.policy;
@@ -104,7 +104,7 @@ return null;
       onSubmit={onSubmit}
     >
       <Form>
-        <Box p="4" fontWeight="600" fontSize="2" id="group-details">Group Details</Box>
+        <Box p="4" id="group-details"><Text fontWeight="600" fontSize="2">Group Details</Text></Box>
         <Col pb="4" px="4" maxWidth="384px" gapY={4}>
           <Input
             id="title"
@@ -130,7 +130,6 @@ return null;
             caption="A picture for your group"
             placeholder="Enter URL"
             disabled={disabled}
-            storage={storage}
           />
           <Checkbox
             id="isPrivate"
