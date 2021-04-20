@@ -5276,6 +5276,18 @@
     |=  [a=(tree item) b=key]
     ^-  ?
     !=(~ (get a b))
+  ::  +map: direct conversion from ordered-map to map
+  ::
+  ++  map
+    ~/  %map
+    |=  a=(tree item)
+    =|  b=(^map key val)
+    |-  ^+  b
+    ?~  a  b
+    %=  $
+      a  r.a
+      b  $(a l.a, b (~(put by b) [key val]:n.a))
+    ==
   ::  +nip: remove root; for internal use
   ::
   ++  nip
