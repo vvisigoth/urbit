@@ -197,6 +197,7 @@
         uv_buf_t cel_u;                //  clear to end of line
         //
         uv_buf_t bel_u;                //  bel sound bell
+        uv_buf_t nel_u;                //  newline
       } u3_utfo;
 
 #if 0
