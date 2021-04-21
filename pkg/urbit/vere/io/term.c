@@ -1540,7 +1540,7 @@ u3_term_io_loja(int x)
     }
     else {
       if ( c3y == u3_Host.ops_u.tem ) {
-        fprintf(stdout, "\n");
+        fprintf(stdout, ">x\r\nx<");
         fflush(stdout);
       }
       else {
