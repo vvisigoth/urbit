@@ -1541,7 +1541,7 @@ u3_term_io_loja(int x)
     }
     else {
       if ( c3y == u3_Host.ops_u.tem ) {
-        u3_write_fd(1, "\r\n", 2);
+        //
       }
       else {
         if ( 0 != _term_tcsetattr(1, TCSADRAIN, &uty_u->raw_u) ) {
@@ -1580,7 +1580,13 @@ void
 u3_term_io_log(c3_c* line)
 {
   FILE* stream = u3_term_io_hija();
-  int x = fprintf(stream, "%s", line);
+  int x;
+  if (c3n == u3_Host.ops_u.tem) {
+    x = fprintf(stream, "%s", line);
+  }
+  else {
+    x = fprintf(stream, "%s\n", line);
+  }
   u3_term_io_loja(x);  //TODO  remove arg? unused...
   fflush(stream);
 }
