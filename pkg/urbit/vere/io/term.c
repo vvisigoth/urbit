@@ -1541,7 +1541,7 @@ u3_term_io_loja(int x)
     }
     else {
       if ( c3y == u3_Host.ops_u.tem ) {
-        _term_it_dump_buf(uty_u, &uty_u->ufo_u.nel_u);
+        u3_write_fd(1, "\r\n", 2);
       }
       else {
         if ( 0 != _term_tcsetattr(1, TCSADRAIN, &uty_u->raw_u) ) {
