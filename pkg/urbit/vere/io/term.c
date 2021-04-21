@@ -1580,8 +1580,8 @@ u3_term_io_log(c3_c* line)
 {
   FILE* stream = u3_term_io_hija();
   int x = fprintf(stream, "%s", line);
-  fflush(stream);
   u3_term_io_loja(x);  //TODO  remove arg? unused...
+  fflush(stream);
 }
 
 /* u3_term_tape_to(): dump a tape to a file.
