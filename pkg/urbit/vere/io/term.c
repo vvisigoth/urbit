@@ -1528,7 +1528,7 @@ u3_term_io_hija(void)
 /* u3_term_io_loja(): release console from fprintf.
 */
 void
-u3_term_io_loja(int x)
+u3_term_io_loja(int x, FILE* f)
 {
   u3_utty* uty_u = _term_main();
 
@@ -1541,7 +1541,7 @@ u3_term_io_loja(int x)
     }
     else {
       if ( c3y == u3_Host.ops_u.tem ) {
-        //
+        fprintf(f, "\r\n");
       }
       else {
         if ( 0 != _term_tcsetattr(1, TCSADRAIN, &uty_u->raw_u) ) {
@@ -1581,13 +1581,8 @@ u3_term_io_log(c3_c* line)
 {
   FILE* stream = u3_term_io_hija();
   int x;
-  if (c3n == u3_Host.ops_u.tem) {
-    x = fprintf(stream, "(%s)", line);
-  }
-  else {
-    x = fprintf(stream, "<%s>\r\n", line);
-  }
-  u3_term_io_loja(x);  //TODO  remove arg? unused...
+  fprintf(stream, "%s", line);
+  u3_term_io_loja(x, stream);  //TODO  remove arg? unused...
   fflush(stream);
 }
 
@@ -1620,7 +1615,7 @@ u3_term_tape(u3_noun tep)
 
   u3_term_tape_to(fil_f, tep);
 
-  u3_term_io_loja(0);
+  u3_term_io_loja(0, fil_f);
 }
 
 /* u3_term_wall(): dump a wall to stdout.
@@ -1639,7 +1634,7 @@ u3_term_wall(u3_noun wol)
 
     wal = u3t(wal);
   }
-  u3_term_io_loja(0);
+  u3_term_io_loja(0, fil_f);
 
   u3z(wol);
 }

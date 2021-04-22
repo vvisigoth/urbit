@@ -1560,7 +1560,7 @@ _http_init_tls(uv_buf_t key_u, uv_buf_t cer_u)
     if( 0 == sas_i ) {
       u3l_log("http: load private key failed:");
       ERR_print_errors_fp(u3_term_io_hija());
-      u3_term_io_loja(1);
+      u3_term_io_loja(1, stderr);
 
       SSL_CTX_free(tls_u);
 
@@ -1578,7 +1578,7 @@ _http_init_tls(uv_buf_t key_u, uv_buf_t cer_u)
     if( 0 == sas_i ) {
       u3l_log("http: load certificate failed:");
       ERR_print_errors_fp(u3_term_io_hija());
-      u3_term_io_loja(1);
+      u3_term_io_loja(1, stderr);
 
       BIO_free(bio_u);
       SSL_CTX_free(tls_u);
