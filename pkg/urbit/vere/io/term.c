@@ -144,7 +144,6 @@ u3_term_log_init(void)
       uty_u->ufo_u.cel_u = TERM_LIT_BUF("\033[K");
 
       uty_u->ufo_u.bel_u = TERM_LIT_BUF("\x7");
-      uty_u->ufo_u.nel_u = TERM_LIT_BUF("\r\n");
     }
 
     //  Load old terminal state to restore.
