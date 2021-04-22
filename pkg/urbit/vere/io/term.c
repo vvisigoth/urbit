@@ -28,10 +28,10 @@ static void     _term_read_cb(uv_stream_t*    tcp_u,
 static c3_i     _term_tcsetattr(c3_i, c3_i, const struct termios*);
 static void     _term_it_send_stub(u3_utty* uty_u, u3_noun tub);
 
-/* u3_write_fd(): retry interrupts, continue partial writes, assert errors.
+/* _write(): retry interrupts, continue partial writes, assert errors.
 */
-void
-u3_write_fd(c3_i fid_i, const void* buf_v, size_t len_i)
+static void
+_write(c3_i fid_i, const void* buf_v, size_t len_i)
 {
   ssize_t ret_i;
 
@@ -55,7 +55,7 @@ u3_write_fd(c3_i fid_i, const void* buf_v, size_t len_i)
 
     //  assert on true errors
     //
-    //    NB: can't call u3l_log here or we would re-enter u3_write_fd()
+    //    NB: can't call u3l_log here or we would re-enter _write()
     //
     if ( ret_i < 0 ) {
       fprintf(stderr, "term: write failed %s\r\n", strerror(errno));
@@ -254,7 +254,7 @@ u3_term_log_exit(void)
       if ( -1 == fcntl(uty_u->fid_i, F_SETFL, uty_u->cug_i) ) {
         c3_assert(!"exit-fcntl");
       }
-      u3_write_fd(uty_u->fid_i, "\r\n", 2);
+      _write(uty_u->fid_i, "\r\n", 2);
     }
   }
 
