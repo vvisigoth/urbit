@@ -1541,7 +1541,8 @@ u3_term_io_loja(int x, FILE* f)
     }
     else {
       if ( c3y == u3_Host.ops_u.tem ) {
-        fprintf(f, "\r\n");
+        fprintf(f, "\n");
+        fflush(NULL);
       }
       else {
         if ( 0 != _term_tcsetattr(1, TCSADRAIN, &uty_u->raw_u) ) {
@@ -1570,7 +1571,7 @@ u3_term_io_loja(int x, FILE* f)
     }
   }
   else {
-    fprintf(stdout, "\r\n");
+    fprintf(f, "\r\n");
   }
 }
 
@@ -1580,10 +1581,9 @@ void
 u3_term_io_log(c3_c* line)
 {
   FILE* stream = u3_term_io_hija();
-  int x;
-  fprintf(stream, "%s", line);
+  int x = fprintf(stream, "%s", line);
+  fflush(NULL);
   u3_term_io_loja(x, stream);  //TODO  remove arg? unused...
-  fflush(stream);
 }
 
 /* u3_term_tape_to(): dump a tape to a file.
