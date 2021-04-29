@@ -78,7 +78,7 @@
     ::  #  constants
     ::
     ::  contract addresses
-    ++  contracts  mainnet-contracts
+    ++  contracts  ropsten-contracts
     ++  mainnet-contracts
       |%
       ::  azimuth: data contract
@@ -108,6 +108,8 @@
       ::  public: block number of azimuth becoming independent
       ::
       ++  public  7.033.765
+      ::
+      ++  chain-id  1
       --
     ::
     ::  Testnet contract addresses
@@ -129,8 +131,12 @@
       ++  delegated-sending
         0x3e8c.a510.354b.c2fd.bbd6.1502.52d9.3105.c9c2.7bbe
       ::
+      ++  naive
+        0xb581.01cd.3bbb.cc6f.a40b.cdb0.4bb7.1623.b5c7.d39b
+      ::
       ++  launch  4.601.630
       ++  public  launch
+      ++  chain-id  3
       --
     ::
     ::  Local contract addresses
@@ -150,10 +156,11 @@
         0x3c3.dc12.be65.8158.d1d7.f9e6.6e08.ec40.99c5.68e4
       ++  conditional-star-release
         0x35eb.3b10.2d9c.1b69.ac14.69c1.b1fe.1799.850c.d3eb
-      ++  launch  0
-      ++  public  0
       ++  naive
         0xe604.2703.475d.0dd1.bc2e.b564.a55f.1832.c252.7171
+      ++  launch  0
+      ++  public  0
+      ++  chain-id  1.337
       --
     ::
       ::  ++  azimuth  0x863d.9c2e.5c4c.1335.96cf.ac29.d552.55f0.d0f8.6381  ::  local bridge
